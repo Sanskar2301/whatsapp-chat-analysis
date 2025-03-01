@@ -3,6 +3,8 @@ import preprocessor,helper
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+
+
 st.sidebar.title("Whatsapp Chat Analyzer")
 
 uploaded_file = st.sidebar.file_uploader("Choose a file")
@@ -10,10 +12,11 @@ if uploaded_file is not None:
     bytes_data = uploaded_file.getvalue()
     data = bytes_data.decode("utf-8")
     df = preprocessor.preprocess(data)
-
     # fetch unique users
     user_list = df['user'].unique().tolist()
-    user_list.remove('group_notification')
+    if 'group_notification' in user_list:
+        user_list.remove('group_notification')
+
     user_list.sort()
     user_list.insert(0,"Overall")
 
@@ -43,7 +46,8 @@ if uploaded_file is not None:
         st.title("Monthly Timeline")
         timeline = helper.monthly_timeline(selected_user,df)
         fig,ax = plt.subplots()
-        ax.plot(timeline['time'], timeline['message'],color='green')
+        
+        ax.plot(timeline['time'].values, timeline['message'].values,color='green')
         plt.xticks(rotation='vertical')
         st.pyplot(fig)
 
@@ -51,7 +55,7 @@ if uploaded_file is not None:
         st.title("Daily Timeline")
         daily_timeline = helper.daily_timeline(selected_user, df)
         fig, ax = plt.subplots()
-        ax.plot(daily_timeline['only_date'], daily_timeline['message'], color='black')
+        ax.plot(daily_timeline['only_date'].values, daily_timeline['message'].values, color='black')
         plt.xticks(rotation='vertical')
         st.pyplot(fig)
 
@@ -77,9 +81,12 @@ if uploaded_file is not None:
 
         st.title("Weekly Activity Map")
         user_heatmap = helper.activity_heatmap(selected_user,df)
-        fig,ax = plt.subplots()
-        ax = sns.heatmap(user_heatmap)
-        st.pyplot(fig)
+        if not user_heatmap.empty:
+            fig,ax = plt.subplots()
+            ax = sns.heatmap(user_heatmap)
+            st.pyplot(fig)
+        else:
+            st.warning("No data available for this user!")
 
         # finding the busiest users in the group(Group level)
         if selected_user == 'Overall':
@@ -95,17 +102,9 @@ if uploaded_file is not None:
                 st.pyplot(fig)
             with col2:
                 st.dataframe(new_df)
-
-        # WordCloud
-        st.title("Wordcloud")
-        df_wc = helper.create_wordcloud(selected_user,df)
-        fig,ax = plt.subplots()
-        ax.imshow(df_wc)
-        st.pyplot(fig)
-
+        
         # most common words
         most_common_df = helper.most_common_words(selected_user,df)
-
         fig,ax = plt.subplots()
 
         ax.barh(most_common_df[0],most_common_df[1])
@@ -115,16 +114,16 @@ if uploaded_file is not None:
         st.pyplot(fig)
 
         # emoji analysis
-        emoji_df = helper.emoji_helper(selected_user,df)
+        emoji_df = helper.extract_emojis(selected_user, df)
         st.title("Emoji Analysis")
-
-        col1,col2 = st.columns(2)
-
+        
+        col1,col2 = st.columns(2) 
         with col1:
             st.dataframe(emoji_df)
         with col2:
             fig,ax = plt.subplots()
-            ax.pie(emoji_df[1].head(),labels=emoji_df[0].head(),autopct="%0.2f")
+            ax.pie(emoji_df.iloc[:, 1].head(), labels=emoji_df.iloc[:, 0].head(), autopct="%0.2f")
+            
             st.pyplot(fig)
 
 
